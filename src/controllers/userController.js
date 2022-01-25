@@ -152,8 +152,15 @@ const createMultitudeUsers = async (req, res) => {
 				await register(email, password, attributeList)
 				await confirmUser(email)
 			} catch (error) {
-				console.log(error);
-				return res.status(400).send({message: error.message});
+				// console.log(error);
+				if (error.message === 'An account with the given email already exists.') {
+					console.log('continue ==>>');
+					await confirmUser(email)
+				} else {
+					console.log(error);
+					return res.status(400).send({message: error.message});
+				}
+				
 			}
 			console.log(`user created ${i} finished`);
 			sleep(1000)
