@@ -23,34 +23,60 @@ const cognitoidentityserviceprovider = new AWS.CognitoIdentityServiceProvider({
     secretAccessKey: process.env.SECRET_ACCESS_KEY
   });
 
+const register = (email, password, attribute_list) => {
+	return new Promise((resolve, reject) => {
+		userPool.signUp(email, password, attribute_list, null, (err, result) => {
+		if (err) {
+			console.log(err.message);
+			reject(err);
+			return;
+		}
+		cognitoUser = result.user;
+		resolve(cognitoUser)
+	  });
+	});
+}
+
+const confirmUser = (email) => {
+	const confirmParams = {
+		UserPoolId: USER_POOL_ID, 
+		Username: email
+	};
+	return new Promise((resolve, reject) => {
+		cognitoidentityserviceprovider.adminConfirmSignUp(confirmParams, function(err, data) {
+			if (err) {
+				console.log(err.message);
+				reject(err);
+				return;
+			}
+			resolve(true)
+		})
+	})
+}
+
+const sleep = (numberMillis) => {
+	let nowTime = new Date()
+	const exitTime = nowTime.getTime() + numberMillis
+	while (true) {
+		nowTime = new Date()
+		if (nowTime.getTime() > exitTime) return
+	}
+ }
+
 const create = async (req, res) => {
 	const {email, password} = req.body;
 	console.log(email, password);
 	if (email && password) {
 		const attributeList = [];
-	
-		userPool.signUp(email, password, attributeList, null, function(err, result){
-			if (err) {
-				console.log('error from sign up ==>>>' , err);
-				return res.status(400).send({message: err.message});
-			}
 
-			const confirmParams = {
-				UserPoolId: USER_POOL_ID, 
-				Username: email
-			};
-			
-			cognitoidentityserviceprovider.adminConfirmSignUp(confirmParams, function(err, data) {
-				if (err) {
-					console.log('confirm admin error ==>> ', err, err.stack); 
-					return res.status(400).send({message: err.message});
-				}
-				
-				const cognitoUser = result.user;
-				console.log('user name is ' + cognitoUser.getUsername());
-				return res.status(200).send({message: 'ok', data: cognitoUser})
-			  });
-		});
+		try {
+			await register(email, password, attributeList)
+			await confirmUser(email)
+			return res.status(200).send({message: 'ok'})
+		} catch (err) {
+			console.log('error from sign up ==>>>' , err);
+			return res.status(400).send({message: err.message});
+		}
 
 	} else {
 		return res.status(400).send({message: 'user name and password not provided'});
@@ -72,9 +98,6 @@ const login = async (req, res) => {
 		const cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
 		cognitoUser.authenticateUser(authenticationDetails, {
 			onSuccess: function (result) {
-				// console.log('access token + ' + result.getAccessToken().getJwtToken());
-				// console.log('id token + ' + result.getIdToken().getJwtToken());
-				// console.log('refresh token + ' + result.getRefreshToken().getToken());
 				const accessToken = result.getAccessToken().getJwtToken()
 				const idToken = result.getIdToken().getJwtToken()
 				const refreshToken = result.getRefreshToken().getToken()
@@ -115,50 +138,31 @@ const verifyEmail = async (req, res) => {
 	
 }
 
-const sleep = (numberMillis) => {
-	let nowTime = new Date()
-	const exitTime = nowTime.getTime() + numberMillis
-	while (true) {
-		nowTime = new Date()
-		if (nowTime.getTime() > exitTime) return
-	}
- }
-
 const createMultitudeUsers = async (req, res) => {
 
-	for (let i = 41; i < 1000; i++ ) {
-		const email = `ali.almahmud+${i}@clearbridgemobile.com`
-		const password = "Test123$"
+	const {start, end} = req.body; 
 
-		const attributeList = [];
-	
-		userPool.signUp(email, password, attributeList, null, function(err, result){
-			if (err) {
-				console.log('error from sign up ==>>>' , err);
-				return res.status(400).send({message: err.message});
+	if ( start && end ) {
+		for (let i = parseInt(start); i <= parseInt(end); i++ ) {
+			console.log(`user create ${i} start ======>>>>`);
+			const email = `ali.almahmud+${i}@clearbridgemobile.com`
+			const password = "Test123$"
+			const attributeList = [];
+			try {
+				await register(email, password, attributeList)
+				await confirmUser(email)
+			} catch (error) {
+				console.log(error);
+				return res.status(400).send({message: error.message});
 			}
-
-			const confirmParams = {
-				UserPoolId: USER_POOL_ID, 
-				Username: email
-			};
-			
-			cognitoidentityserviceprovider.adminConfirmSignUp(confirmParams, function(err, data) {
-				if (err) {
-					console.log('confirm admin error ==>> ', err, err.stack); 
-					return res.status(400).send({message: err.message});
-				}
-				
-				// const cognitoUser = result.user;
-				console.log(`user create ${i}`);
-				
-			  });
-		});
-		sleep(1000)
-
+			console.log(`user created ${i} finished`);
+			sleep(1000)
+		}
+	} else {
+		return res.status(400).send({message: 'start and end not provided'});
 	}
 
-	// return res.status(200).send({message: 'ok'})
+	return res.status(200).send({message: 'ok'})
 }
 
 module.exports = {create, login, verifyEmail, createMultitudeUsers}
