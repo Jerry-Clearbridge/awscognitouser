@@ -20,8 +20,8 @@ const cognitoidentityserviceprovider = new AWS.CognitoIdentityServiceProvider({
 	apiVersion: "2016-04-19",
 	region: pool_region,
 	accessKeyId: process.env.ACCESS_KEY_ID,
-    secretAccessKey: process.env.SECRET_ACCESS_KEY
-  });
+	secretAccessKey: process.env.SECRET_ACCESS_KEY
+});
 
 const register = (email, password, attribute_list) => {
 	return new Promise((resolve, reject) => {
@@ -61,7 +61,7 @@ const sleep = (numberMillis) => {
 		nowTime = new Date()
 		if (nowTime.getTime() > exitTime) return
 	}
- }
+}
 
 const create = async (req, res) => {
 	const {email, password} = req.body;
