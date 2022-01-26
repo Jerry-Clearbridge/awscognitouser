@@ -118,20 +118,13 @@ const login = async (req, res) => {
 const verifyEmail = async (req, res) => {
 	const {email} = req.body;
 	if (email) {
-		const confirmParams = {
-			UserPoolId: USER_POOL_ID, 
-			Username: email 
-		};
-		
-		cognitoidentityserviceprovider.adminConfirmSignUp(confirmParams, function(err, data) {
-			if (err) {
-				console.log('confirm admin error ==>> ', err, err.stack); 
-				return res.status(400).send({message: err.message});
-			}
-	
-			console.log('conform admin ==>> ', data);
-			return res.status(200).send({message: 'Email confirmed'})
-		})
+		try {
+			await confirmUser(email)
+			return res.status(200).send({message: 'Email confirmed successfully'})
+		} catch (error) {
+			console.log(error);
+			return res.status(400).send({message: error.message});
+		}
 	} else {
 		return res.status(400).send({message: 'email not provided'});
 	}
@@ -171,7 +164,7 @@ const createMultitudeUsers = async (req, res) => {
 				}
 			}
 			console.log(`user created ${i} finished`);
-			sleep(1000)
+			sleep(500)
 		}
 	} else {
 		return res.status(400).send({message: 'start and end not provided'});
